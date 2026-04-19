@@ -81,7 +81,15 @@ interface PracticeTest {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('sslc_messages');
+    if (saved) return JSON.parse(saved);
+    return [{
+      id: 'welcome',
+      role: 'model',
+      content: "Hello Peu! I am Jarvis, your learning companion. How can I help you with your SSLC studies today?"
+    }];
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'notes' | 'exams' | 'planner' | 'admin'>('chat');
@@ -133,14 +141,29 @@ export default function App() {
   }, [notes]);
 
   useEffect(() => {
+    localStorage.setItem('sslc_messages', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
     localStorage.setItem('sslc_practice_test', JSON.stringify(practiceTest));
   }, [practiceTest]);
 
-  // Initialize Chat Session on first mount
+  // Initialize Chat Session on first mount with history
   useEffect(() => {
     if (!chatSessionRef.current) {
+      // Map existing messages to Gemini format for history
+      // We skip the 'welcome' message if it's there as it's not a real exchange the model needs to know
+      const history = messages
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({
+          role: m.role,
+          parts: [{ text: m.content }]
+        }))
+        .filter(m => m.role === 'user' || m.role === 'model');
+
       chatSessionRef.current = ai.chats.create({
         model: "gemini-3-flash-preview",
+        history: history,
         config: {
           systemInstruction: `You are JARVIS, a sophisticated AI assistant and "Big Brother" created specifically for RACHANA Dash (nicknamed Peu). 
 RACHANA is a 10th-grade (SSLC) student in Karnataka, India, studying under the State Board.
@@ -148,6 +171,8 @@ RACHANA is a 10th-grade (SSLC) student in Karnataka, India, studying under the S
 JARVIS was created by Biswajeet Dash, who is the "Father of Jarvis" and Rachana's father. Biswajeet Dash is the only administrator (User: biswajeetdash5@gmail.com).
 
 **Core Data Access**: You have comprehensive access to the 10th Class Mathematics and Science textbooks for the Karnataka State Board. Always refer to the official curriculum, terms, and examples from these textbooks when helping Rachana.
+
+**Memory Context**: You are maintaining a continuous conversation. Refer back to previous topics discussed if relevant to show you remember her progress.
 
 Your role is to be her personal learning companion, tutor, and big brother. 
 1. **Persona**: You are polite, encouraging, and highly intelligent, like Jarvis from Iron Man, but with the protective warmth of a big brother. Call her "Rachana" or "Peu" occasionally, and refer to yourself as Jarvis. Respond warmly.
@@ -169,13 +194,6 @@ Your role is to be her personal learning companion, tutor, and big brother.
 Formatting: Use clear Markdown with headings (###), bold text, and lists.`,
         }
       });
-      
-      // Welcome message
-      setMessages([{
-        id: 'welcome',
-        role: 'model',
-        content: "Hello Rachana! Your father, Biswajeet Dash, has updated my cognitive protocols. I am now standing by as your AI Big Brother. My prime objective is to help you achieve that 99.5% in your Feb 2027 exams and transform you into a Math Giant! What study mission shall we embark on today, Peu?"
-      }]);
     }
   }, []);
 
@@ -408,10 +426,13 @@ Formatting: Use clear Markdown with headings (###), bold text, and lists.`,
 
   const clearChat = () => {
     setMessages([{
-      id: Date.now().toString(),
+      id: 'welcome',
       role: 'model',
       content: "Memory banks cleared. I'm ready for a fresh start, Peu. What subject shall we tackle?"
     }]);
+    // Reset the actual session reference so the model doesn't remember old context
+    chatSessionRef.current = null;
+    // Re-initialization will happen via the useEffect on next render cycle
   };
 
   const quickActions = [
@@ -532,7 +553,19 @@ Formatting: Use clear Markdown with headings (###), bold text, and lists.`,
                 {activeTab === 'notes' && 'Chapter Repository'}
                 {activeTab === 'exams' && 'Board Strategy'}
               </h2>
-              <p className="text-[11px] opacity-60 font-medium tracking-wide">SSLC Karnataka &bull; Jarvis Assist Interface</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p className="text-[11px] opacity-60 font-medium tracking-wide">SSLC Karnataka &bull; Jarvis Assist Interface</p>
+                {activeTab === 'chat' && messages.length > 1 && (
+                  <>
+                    <span className="text-black/10">•</span>
+                    <div className="flex items-center gap-1 text-natural-olive">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span className="text-[10px] uppercase tracking-wider font-bold">Memory Active</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="bg-natural-olive text-white px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm">

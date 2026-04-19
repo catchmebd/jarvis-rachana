@@ -140,7 +140,7 @@ export default function App() {
   useEffect(() => {
     if (!chatSessionRef.current) {
       chatSessionRef.current = ai.chats.create({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         config: {
           systemInstruction: `You are JARVIS, a sophisticated AI assistant and "Big Brother" created specifically for RACHANA Dash (nicknamed Peu). 
 RACHANA is a 10th-grade (SSLC) student in Karnataka, India, studying under the State Board.
@@ -257,7 +257,7 @@ Formatting: Use clear Markdown with headings (###), bold text, and lists.`,
       Output format is JSON array of objects with keys: date, topic, subject.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -364,7 +364,7 @@ Formatting: Use clear Markdown with headings (###), bold text, and lists.`,
       Return as a JSON object with keys: subject, chapter, questions (array of objects with id, type, question, options (for mcq), correctAnswer).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
